@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Sistem Pakar Diagnosa ISPA</title>
+
+<!-- jsPDF CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+    font-family:Segoe UI,Arial;
+    background:linear-gradient(120deg,#2196F3,#64B5F6);
+    padding:40px;
+}
+.container{
+    background:#fff;
+    max-width:750px;
+    margin:auto;
+    padding:30px;
+    border-radius:15px;
+    box-shadow:0 10px 25px rgba(0,0,0,.2);
+}
+h2,h3{text-align:center;color:#0D47A1}
+label{font-weight:bold}
+input,select{
+    width:100%;padding:8px;border-radius:6px;border:1px solid #ccc
+}
+.pertanyaan{
+    text-align:center;font-size:18px;margin:25px 0
+}
+.kode{font-weight:bold;color:#1565C0}
+button{
+    width:100%;padding:12px;margin-top:10px;
+    border:none;border-radius:8px;font-size:16px;
+    color:white;cursor:pointer
+}
+.lanjut{background:#1976D2}
+.ya{background:#2E7D32}
+.tidak{background:#C62828}
+.download{background:#00897B}
+.ulang{background:#455A64}
+.hasil{
+    margin-top:20px;padding:20px;
+    background:#E3F2FD;border-left:6px solid #1976D2;
+    border-radius:8px;color:#0D47A1
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>Sistem Pakar Diagnosa ISPA</h2>
+
+<!-- DATA PASIEN -->
+<div id="dataPasien">
+<h3>Data Pasien</h3>
+<label>Nama</label><input id="nama">
+<label>Umur</label><input type="number" id="umur">
+<label>Jenis Kelamin</label>
+<select id="jk">
+<option value="">-- Pilih --</option>
+<option>Laki-laki</option>
+<option>Perempuan</option>
+</select>
+<label>Tanggal</label><input type="date" id="tanggal">
+<button class="lanjut" onclick="mulai()">Mulai Diagnosa</button>
+</div>
+
+<!-- DIAGNOSA -->
+<div id="diagnosa" style="display:none">
+<div id="pertanyaan" class="pertanyaan"></div>
+<button class="ya" onclick="jawab(true)">YA</button>
+<button class="tidak" onclick="jawab(false)">TIDAK</button>
+</div>
+
+<!-- HASIL -->
+<div id="hasil" class="hasil" style="display:none"></div>
+<button id="btnPDF" class="download" style="display:none" onclick="downloadPDF()">⬇ Download PDF</button>
+<button id="ulang" class="ulang" style="display:none" onclick="location.reload()">🔄 Mulai Ulang</button>
+
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+// ================= DATA GEJALA =================
+const gejalaList = [
+{kode:"G001",nama:"Demam"},
+{kode:"G002",nama:"Batuk"},
+{kode:"G003",nama:"Pilek"},
+{kode:"G004",nama:"Hidung tersumbat"},
+{kode:"G005",nama:"Ingus kuning/hijau"},
+{kode:"G006",nama:"Sesak napas"},
+{kode:"G007",nama:"Napas cepat"},
+{kode:"G009",nama:"Sakit kepala"},
+{kode:"G010",nama:"Batuk kering"},
+{kode:"G011",nama:"Batuk berdahak"},
+{kode:"G012",nama:"Sakit tenggorokan"},
+{kode:"G013",nama:"Suara serak"},
+{kode:"G015",nama:"Nyeri telinga"},
+{kode:"G016",nama:"Tenggorokan merah & bengkak"},
+{kode:"G021",nama:"Nyeri sendi"},
+{kode:"G022",nama:"Menggigil"},
+{kode:"G025",nama:"Mual / muntah"},
+{kode:"G026",nama:"Nyeri bahu / punggung"},
+{kode:"G028",nama:"Drooling (liur berlebih)"},
+{kode:"G030",nama:"Suara hilang"},
+{kode:"G032",nama:"Sianosis (bibir kebiruan)"}
+];
+
+const solusi={
+"Common Cold":"Istirahat cukup dan perbanyak cairan.",
+"Influenza Like Illness (ILI)":"Istirahat total dan konsultasi dokter.",
+"Pneumonia":"Segera ke rumah sakit atau dokter.",
+"Tidak dapat ditentukan":"Disarankan konsultasi medis."
+};
+
+let index=0;
+let gejalaNama=[];
+let gejalaKode=[];
+let hasilPenyakit="";
+
+function mulai(){
+if(!nama.value||!umur.value||!jk.value||!tanggal.value){
+alert("Lengkapi data pasien!");
+return;
+}
+dataPasien.style.display="none";
+diagnosa.style.display="block";
+tampil();
+}
+
+function tampil(){
+if(index<gejalaList.length){
+pertanyaan.innerHTML=
+"Apakah pasien mengalami:<br><br><span class='kode'>"+
+gejalaList[index].kode+"</span> - "+gejalaList[index].nama+" ?";
+}else proses();
+}
+
+function jawab(ya){
+if(ya){
+gejalaKode.push(gejalaList[index].kode);
+gejalaNama.push(gejalaList[index].nama);
+}
+index++; tampil();
+}
+
+function proses(){
+diagnosa.style.display="none";
+hasilPenyakit="Tidak dapat ditentukan";
+
+if(["G002","G003","G004","G001"].every(g=>gejalaKode.includes(g)))
+hasilPenyakit="Common Cold";
+else if(["G001","G002","G021","G022"].every(g=>gejalaKode.includes(g)))
+hasilPenyakit="Influenza Like Illness (ILI)";
+else if(["G001","G002","G011","G006"].every(g=>gejalaKode.includes(g)))
+hasilPenyakit="Pneumonia";
+
+hasil.style.display="block";
+hasil.innerHTML=`
+<b>Nama:</b> ${nama.value}<br>
+<b>Umur:</b> ${umur.value}<br>
+<b>Jenis Kelamin:</b> ${jk.value}<br>
+<b>Tanggal:</b> ${tanggal.value}<br><br>
+
+<b>Gejala Dipilih:</b><br>
+- ${gejalaNama.join("<br>- ")}<br><br>
+
+<b>Diagnosa:</b> ${hasilPenyakit}<br><br>
+<b>Solusi:</b><br>${solusi[hasilPenyakit]}
+`;
+
+btnPDF.style.display="block";
+ulang.style.display="block";
+}
+
+// ================= PDF =================
+function downloadPDF(){
+let doc = new jsPDF();
+let y = 15;
+
+doc.setFontSize(14);
+doc.text("HASIL DIAGNOSA ISPA", 105, y, {align:"center"});
+y += 10;
+
+doc.setFontSize(11);
+doc.text(`Nama           : ${nama.value}`, 15, y); y+=7;
+doc.text(`Umur           : ${umur.value} tahun`, 15, y); y+=7;
+doc.text(`Jenis Kelamin  : ${jk.value}`, 15, y); y+=7;
+doc.text(`Tanggal        : ${tanggal.value}`, 15, y); y+=10;
+
+doc.text("Gejala yang dialami:", 15, y); y+=7;
+gejalaNama.forEach(g=>{
+    doc.text("- "+g, 18, y);
+    y+=6;
+});
+
+y+=5;
+doc.text(`Diagnosa : ${hasilPenyakit}`, 15, y); y+=8;
+doc.text("Solusi :", 15, y); y+=7;
+doc.text(solusi[hasilPenyakit], 18, y, {maxWidth:170});
+
+doc.save(`Hasil_Diagnosa_ISPA_${nama.value}.pdf`);
+}
+</script>
+
+</body>
+</html>
